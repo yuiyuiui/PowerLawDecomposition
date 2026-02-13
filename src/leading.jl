@@ -417,7 +417,11 @@ function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
 
         # calculate local coefficient
         a_tmp = Avec[i]
-        denom = x_up^(1 - a_tmp) - x_low^(1 - a_tmp)
+        if abs(a_tmp) < eps(T) * 1000
+            denom = log(x_up / x_low)
+        else
+            denom = x_up^(1 - a_tmp) - x_low^(1 - a_tmp)
+        end
         Cvec[i] = Svec[i + 1] * (1 - a_tmp) / denom
     end
 

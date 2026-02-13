@@ -36,7 +36,7 @@ In the following table, $n$ means the order of Wynn's epsilon algorithm, $k$ mea
 | Shanks | 1.7e-5      | 3e-4       |
 | Wynn (n=3, k=2)  | 1.7e-5      | 3e-4       |
 | Wynn Pola (n=21, k=1.3, F64)| 2e-11      | 1.1e-7       |
-| Wynn Pola (n=21, k=1.3, BigFloat)| 6e-13      | 1.6e-8       |
+| Wynn Pola (n=41, k=1.2, BigFloat)| 3e-14      | 3e-10       |
 
 # 4. API
 ```julia
