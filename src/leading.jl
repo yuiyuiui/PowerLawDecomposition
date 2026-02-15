@@ -273,8 +273,12 @@ end
 The core implementation of Wynn's Epsilon algorithm.
 Input a sequence S of length n (odd), output the accelerated limit value.
 """
-function wynn_epsilon_core(S::AbstractVector{T}) where {T<:Real}
+function wynn_epsilon_core(S::AbstractVector{T};
+                           use_regularization::Bool=false,
+                           is_print::Bool=false) where {T<:Real}
     n = length(S)
+    r = use_regularization * eps(T)^(2)
+    @show "r = $r"
     # eps table only needs two columns to iterate, for clarity here we use a one-dimensional array to iterate and update
     # this is a in-place update technique (similar to the one-dimensional array generation of Pascal triangle)
     # e_prev corresponds to epsilon_{k-2}, e_curr corresponds to epsilon_{k}
@@ -305,14 +309,10 @@ function wynn_epsilon_core(S::AbstractVector{T}) where {T<:Real}
 
         for i in 1:width
             denom = e_curr[i + 1] - e_curr[i]
+            (is_print) && (@show denom)
 
-            if abs(denom) < 100 * eps(T)
-                # singularity point handling: if the denominator is 0, it usually means that the sequence has converged
-                # assume this step has no acceleration effect, fall back to the previous value
-                e_curr[i] = e_prev[i + 1]
-            else
-                e_curr[i] = e_prev[i + 1] + 1 / denom
-            end
+            e_curr[i] = e_prev[i + 1] +
+                        1 * denom / (r + denom^2)
         end
 
         # update e_prev to the e_curr before the start of this round (for the k-2 item in the next round)
@@ -344,6 +344,7 @@ with `points_per_interval` sample points.
 - `n::Int`: number of apparent orders to compute; must be odd and >= 3 (default: 21).
 - `interp_type::InterpolationType`: interpolation scheme for the input data (default: cubic B-spline).
 - `points_per_interval::Int`: number of quadrature points per sub-interval (default: 101, should be odd).
+- `use_a_final::Bool`: whether to use the final apparent order `a_final` to calculate the coefficient `c` (default: false).
 
 # Returns
 `(order, coefficient)` — the refined exponent `a` and coefficient `c`.
@@ -353,11 +354,16 @@ struct WynnPola <: Method
     n::Int
     interp_type::Interpolations.InterpolationType
     points_per_interval::Int
+    use_a_final::Bool
+    use_regularization::Bool
+    nc::Int
 end
 
 function WynnPola(; k::Real=1.3, n::Int=21, interp_type=BSpline(Cubic(Line(OnGrid()))),
-                  points_per_interval::Int=101)
-    return WynnPola(k, n, interp_type, points_per_interval)
+                  points_per_interval::Int=101, use_a_final::Bool=false,
+                  use_regularization::Bool=false, nc::Int=5)
+    return WynnPola(k, n, interp_type, points_per_interval, use_a_final, use_regularization,
+                    nc)
 end
 
 function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
@@ -369,6 +375,8 @@ function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
 
     # 0. basic checks
     @assert n >= 3 && isodd(n) "Parameter n must be an odd integer >= 3"
+    @assert isodd(method.nc) && (method.nc > 0) "nc must be an odd integer (e.g., 3, 5, 7)"
+
     grid_check(grid)
     h, _ = get_point_num(grid)
     L_start, L_end = grid[1], grid[end]
@@ -406,29 +414,31 @@ function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
 
     # 4. calculate apparent order sequences A and coefficient sequences C
     Avec = zeros(T, n)
-    Cvec = zeros(T, n)
-    for i in 1:n
-        # corresponding intervals i and i+1
-        x_low, x_up = nodes[i + 1], nodes[i + 2]
 
+    for i in 1:n
         ratio = Svec[i + 1] / Svec[i]
         # calculate apparent order
         Avec[i] = 1 - log(ratio) / log(k)
-
-        # calculate local coefficient
-        a_tmp = Avec[i]
-        if abs(a_tmp) < eps(T) * 1000
-            denom = log(x_up / x_low)
-        else
-            denom = x_up^(1 - a_tmp) - x_low^(1 - a_tmp)
-        end
-        Cvec[i] = Svec[i + 1] * (1 - a_tmp) / denom
     end
 
     # 5. perform Wynn acceleration
     # here we call the shared function wynn_epsilon_core discussed earlier
     a_final = wynn_epsilon_core(Avec)
-    c_final = wynn_epsilon_core(Cvec)
+
+    nc = method.nc
+    n1 = method.use_a_final ? nc : n
+    Cvec = zeros(T, n1)
+
+    for i in (n - n1 + 1):n
+        x_low, x_up = nodes[i + 1], nodes[i + 2]
+        a_tmp = method.use_a_final ? a_final : Avec[i]
+        denom = abs(a_tmp - 1) < eps(T) * 1000 ? log(x_up / x_low) :
+                (x_up^(1 - a_tmp) - x_low^(1 - a_tmp)) / (1 - a_tmp)
+        Cvec[i + n1 - n] = Svec[i + 1] / denom
+    end
+    c_final = wynn_epsilon_core(Cvec; use_regularization=method.use_regularization,
+                                is_print=(T == BigFloat && method.use_a_final ? true :
+                                          false))
 
     return [a_final], [c_final], nothing
 end
