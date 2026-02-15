@@ -30,18 +30,24 @@ $$L0=1, L = 2^{14}, h = 0.1$$
 
 In the following table, $n$ means the order of Wynn's epsilon algorithm, $k$ means the geometric sampling rate.
 
+
 | Method | Order error | Coff error |
 |--------|-------------|------------|
 | LogLog | 0.008      | 0.08       |
 | Shanks | 1.7e-5      | 3e-4       |
 | Wynn (n=3, k=2)  | 1.7e-5      | 3e-4       |
-| Wynn Pola (n=21, k=1.3, F64)| 2e-11      | 1.1e-7       |
-| Wynn Pola (n=41, k=1.2, BigFloat)| 3e-14      | 3e-10       |
+| Wynn Pola (n=21, k=1.3, F64)| 2e-11      | 1.2e-7       |
+| Wynn Pola (n=41, k=1.2, F128)| 3e-14      | 3e-10       |
+| Order-locked Wynn Pola (n=21, k=1.3, F64)| 2e-11      | 3e-10       |
+| Order-locked Wynn Pola (n=21, k=1.3, F128)| 5.6e-13      | 1.1e-11       |
+
 
 # 4. API
 ```julia
 orders, coffs, _ = power_solve(f, grid, norder; method = WynnPola())
 ```
+
+Default method is `WynnPola(; k=1.3, n=21, use_a_final=true, nc=5)`. If your data is noisy in near-field, please make sure that for the choosen `k,n`, when $x>L/k^n$, the signal $f(x)$ is pure enough.
 
 `f` is the input signal, `grid` is the grid, `norder` is the order of the power law, `method` is the method to use.
 

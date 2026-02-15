@@ -273,12 +273,9 @@ end
 The core implementation of Wynn's Epsilon algorithm.
 Input a sequence S of length n (odd), output the accelerated limit value.
 """
-function wynn_epsilon_core(S::AbstractVector{T};
-                           use_regularization::Bool=false,
-                           is_print::Bool=false) where {T<:Real}
+function wynn_epsilon_core(S::AbstractVector{T}) where {T<:Real}
     n = length(S)
-    r = use_regularization * eps(T)^(2)
-    @show "r = $r"
+
     # eps table only needs two columns to iterate, for clarity here we use a one-dimensional array to iterate and update
     # this is a in-place update technique (similar to the one-dimensional array generation of Pascal triangle)
     # e_prev corresponds to epsilon_{k-2}, e_curr corresponds to epsilon_{k}
@@ -309,10 +306,12 @@ function wynn_epsilon_core(S::AbstractVector{T};
 
         for i in 1:width
             denom = e_curr[i + 1] - e_curr[i]
-            (is_print) && (@show denom)
-
-            e_curr[i] = e_prev[i + 1] +
-                        1 * denom / (r + denom^2)
+            if abs(denom) < 100 * eps(T)
+                e_curr[i] = e_prev[i + 1] +
+                            1 * denom / (eps(T)^2 + denom^2)
+            else
+                e_curr[i] = e_prev[i + 1] + 1 / denom
+            end
         end
 
         # update e_prev to the e_curr before the start of this round (for the k-2 item in the next round)
@@ -355,15 +354,12 @@ struct WynnPola <: Method
     interp_type::Interpolations.InterpolationType
     points_per_interval::Int
     use_a_final::Bool
-    use_regularization::Bool
     nc::Int
 end
 
 function WynnPola(; k::Real=1.3, n::Int=21, interp_type=BSpline(Cubic(Line(OnGrid()))),
-                  points_per_interval::Int=101, use_a_final::Bool=false,
-                  use_regularization::Bool=false, nc::Int=5)
-    return WynnPola(k, n, interp_type, points_per_interval, use_a_final, use_regularization,
-                    nc)
+                  points_per_interval::Int=101, use_a_final::Bool=false, nc::Int=5)
+    return WynnPola(k, n, interp_type, points_per_interval, use_a_final, nc)
 end
 
 function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
@@ -376,6 +372,7 @@ function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
     # 0. basic checks
     @assert n >= 3 && isodd(n) "Parameter n must be an odd integer >= 3"
     @assert isodd(method.nc) && (method.nc > 0) "nc must be an odd integer (e.g., 3, 5, 7)"
+    method.use_a_final && @assert method.nc < method.n "nc must be less than n"
 
     grid_check(grid)
     h, _ = get_point_num(grid)
@@ -436,9 +433,6 @@ function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
                 (x_up^(1 - a_tmp) - x_low^(1 - a_tmp)) / (1 - a_tmp)
         Cvec[i + n1 - n] = Svec[i + 1] / denom
     end
-    c_final = wynn_epsilon_core(Cvec; use_regularization=method.use_regularization,
-                                is_print=(T == BigFloat && method.use_a_final ? true :
-                                          false))
-
+    c_final = wynn_epsilon_core(Cvec)
     return [a_final], [c_final], nothing
 end
