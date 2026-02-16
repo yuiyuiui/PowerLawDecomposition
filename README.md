@@ -13,9 +13,17 @@ $$a_n>...>a_1>0, ~a_{k+1}-a_k=d>0, c_k\in\mathbb{R}$$
 
 # 2. Method
 
+### 2.1 Leading Item
 1. General Log-Log L2 fit
 2. Shanks transformation
 3. Wynn's epsilon algorithm
+
+### 2.2 Multiple Leading Items
+1. Integral Annihilator Peeling + Global-back fitting
+2. The Scaling Derivative Method
+3. Varpro
+4. SVD-ESPRIT / Matrix Pencil
+5. Mellin Transform + Analytic continuation
 
 # 3. Result
 
