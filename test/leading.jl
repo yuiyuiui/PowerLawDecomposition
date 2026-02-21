@@ -24,16 +24,15 @@
         grid = [L0 + i * h for i in 0:((L - L0) * point_density)]
         f_data = f.(grid)
 
-        order_loglog_arr, coff_loglog_arr, _ = power_solve(f_data, grid, 1; method=LogLog())
-        order_shanks_arr, coff_shanks_arr, _ = power_solve(f_data, grid, 1;
-                                                           method=Shanks(; k=wynn_polarate))
-        order_wynn_arr, coff_wynn_arr, _ = power_solve(f_data, grid, 1;
-                                                       method=Wynn(; k=wynn_polarate,
-                                                                   n=wynn_n))
-        order_wynn_pola_arr, coff_wynn_pola_arr, _ = power_solve(f_data, grid, 1;
-                                                                 method=WynnPola(;
-                                                                                 k=wynn_polarate,
-                                                                                 n=wynn_n))
+        order_loglog_arr, coff_loglog_arr, _ = leading_solve(f_data, grid, LogLog())
+        order_shanks_arr, coff_shanks_arr, _ = leading_solve(f_data, grid,
+                                                             Shanks(; k=wynn_polarate))
+        order_wynn_arr, coff_wynn_arr, _ = leading_solve(f_data, grid,
+                                                         Wynn(; k=wynn_polarate, n=wynn_n))
+        order_wynn_pola_arr, coff_wynn_pola_arr, _ = leading_solve(f_data, grid,
+                                                                   WynnPola(;
+                                                                            k=wynn_polarate,
+                                                                            n=wynn_n))
 
         @show abs(order_loglog_arr[1] - _a1)
         @show abs(coff_loglog_arr[1] - _c1)
@@ -96,11 +95,10 @@ end
         grid = [L0 + i * h for i in 0:((L - L0) * point_density)]
         f_data = f.(grid)
 
-        order_wynnpola_arr, coff_wynnpola_arr, _ = power_solve(f_data, grid, 1;
-                                                               method=WynnPola(; k=1.3,
-                                                                               n=21))
-        order_wynn_arr, coff_wynn_arr, _ = power_solve(f_data, grid, 1;
-                                                       method=Wynn(; k=2, n=7))
+        order_wynnpola_arr, coff_wynnpola_arr, _ = leading_solve(f_data, grid,
+                                                                 WynnPola(; k=1.3, n=21))
+        order_wynn_arr, coff_wynn_arr, _ = leading_solve(f_data, grid,
+                                                         Wynn(; k=2, n=7))
         order_wynnpola = order_wynnpola_arr[1]
         coff_wynnpola = coff_wynnpola_arr[1]
         order_wynn = order_wynn_arr[1]
@@ -128,8 +126,7 @@ end
     grid = [L0 + i * h for i in 0:((L - L0) * point_density)]
     f_data = f.(grid)
 
-    order_arr, coff_arr, _ = power_solve(f_data, grid, 1;
-                                         method=WynnPola(; k=1.2, n=41))
+    order_arr, coff_arr, _ = leading_solve(f_data, grid, WynnPola(; k=1.2, n=41))
     order = order_arr[1]
     coff = coff_arr[1]
 
@@ -165,13 +162,13 @@ end
         grid = [L0 + i * h for i in 0:((L - L0) * point_density)]
         f_data = f.(grid)
 
-        order_arr_false, coff_arr_false, _ = power_solve(f_data, grid, 1;
-                                                         method=WynnPola(; k=1.3, n=21,
-                                                                         use_a_final=false))
+        order_arr_false, coff_arr_false, _ = leading_solve(f_data, grid,
+                                                           WynnPola(; k=1.3, n=21,
+                                                                    use_a_final=false))
 
-        order_arr_true, coff_arr_true, _ = power_solve(f_data, grid, 1;
-                                                       method=WynnPola(; k=1.3, n=21,
-                                                                       use_a_final=true))
+        order_arr_true, coff_arr_true, _ = leading_solve(f_data, grid,
+                                                         WynnPola(; k=1.3, n=21,
+                                                                  use_a_final=true))
         order_false = order_arr_false[1]
         coff_false = coff_arr_false[1]
         order_true = order_arr_true[1]

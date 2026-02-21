@@ -1,3 +1,5 @@
+abstract type LeadingMethod end # Methods to find the leading item
+
 # ====================================================
 # LogLog method
 # ====================================================
@@ -16,7 +18,7 @@ Automatically detects the sign of the tail via a shrinking window controlled by 
 # Returns
 `(order, coefficient, n)` — the fitted exponent `a`, coefficient `c`, and the final tail offset `n`.
 """
-struct LogLog <: Method
+struct LogLog <: LeadingMethod
     ntail::Int
     sign_rate::Real
 end
@@ -25,8 +27,8 @@ function LogLog(; ntail::Int=10, sign_rate::Real=0.9)
     return LogLog(ntail, sign_rate)
 end
 
-function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
-                     method::LogLog) where {T<:Real}
+function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
+                       method::LogLog) where {T<:Real}
     N = length(f)
     ntail = method.ntail
     sign_rate = method.sign_rate
@@ -91,7 +93,7 @@ Equivalent to `Wynn(; k=k, n=3)`.
 # Returns
 `(order, coefficient)` — the refined exponent `a` and coefficient `c`.
 """
-struct Shanks <: Method
+struct Shanks <: LeadingMethod
     k::Int
 end
 
@@ -99,8 +101,8 @@ function Shanks(; k::Int=2)
     return Shanks(k)
 end
 
-function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
-                     method::Shanks) where {T<:Real}
+function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
+                       method::Shanks) where {T<:Real}
     k = method.k
     grid_check(grid)
     N = length(f)
@@ -177,7 +179,7 @@ The grid must be integer-spaced (uniform with integer ratio `k`).
 # Returns
 `(order, coefficient)` — the refined exponent `a` and coefficient `c`.
 """
-struct Wynn <: Method
+struct Wynn <: LeadingMethod
     k::Int
     n::Int
 end
@@ -186,8 +188,8 @@ function Wynn(; k::Int=2, n::Int=3)
     return Wynn(k, n)
 end
 
-function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
-                     method::Wynn) where {T<:Real}
+function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
+                       method::Wynn) where {T<:Real}
     k = method.k
     n = method.n
     # 0. parameter check
@@ -344,11 +346,12 @@ with `points_per_interval` sample points.
 - `interp_type::InterpolationType`: interpolation scheme for the input data (default: cubic B-spline).
 - `points_per_interval::Int`: number of quadrature points per sub-interval (default: 101, should be odd).
 - `use_a_final::Bool`: whether to use the final apparent order `a_final` to calculate the coefficient `c` (default: false).
+- `nc::Int`: `n` used for solving the coefficient `c` (default: 5).
 
 # Returns
 `(order, coefficient)` — the refined exponent `a` and coefficient `c`.
 """
-struct WynnPola <: Method
+struct WynnPola <: LeadingMethod
     k::Real
     n::Int
     interp_type::Interpolations.InterpolationType
@@ -362,8 +365,8 @@ function WynnPola(; k::Real=1.3, n::Int=21, interp_type=BSpline(Cubic(Line(OnGri
     return WynnPola(k, n, interp_type, points_per_interval, use_a_final, nc)
 end
 
-function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
-                     method::WynnPola) where {T<:Real}
+function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
+                       method::WynnPola) where {T<:Real}
     k = method.k
     n = method.n
     interp_type = method.interp_type
