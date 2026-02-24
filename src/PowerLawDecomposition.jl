@@ -6,6 +6,7 @@ using Interpolations
 export Method, power_solve
 export IterSeek, LeadingMethod, leading_solve, LogLog, Shanks, Wynn, WynnPola
 export MellinTrans
+export LSQ
 
 abstract type Method end
 

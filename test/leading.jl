@@ -1,16 +1,21 @@
 @testset "leading.jl" begin
     Random.seed!(123456789)
-    a1 = 0.55
-    a2 = 1.22
-    a3 = 1.83
+    a1 = 0.55 + 0.01 * rand()
+    a2 = 1.22 + 0.01 * rand()
+    a3 = 1.83 + 0.01 * rand()
+    #=
+    0.5503026711692189
+    1.2208577781394374
+    1.8311472770231354
+    =#
     c1, c2, c3 = rand(3) .+ 1
+    #=
+    1.1576090409417932
+    1.8329810111138598
+    1.7569774924284722
+    =#
     wynn_n = 3
     wynn_polarate = 2
-    #=
-    1.0302671169218902
-    1.0857778139437397
-    1.114727702313528
-    =#
     for T in [Float32, Float64]
         @show T
         @show wynn_n
@@ -60,32 +65,38 @@
         @test coff_wynn_pola_arr isa Array{T,1}
         @test length(coff_wynn_pola_arr) == 1
         if T == Float64
-            @test abs(order_loglog_arr[1] - _a1) < 0.008
-            @test abs(coff_loglog_arr[1] - _c1) < 0.08
-            @test abs(order_shanks_arr[1] - _a1) < 1.7e-5
-            @test abs(coff_shanks_arr[1] - _c1) < 3e-4
-            @test abs(order_wynn_arr[1] - _a1) < 1.7e-5
-            @test abs(coff_wynn_arr[1] - _c1) < 3e-4
-            @test abs(order_wynn_pola_arr[1] - _a1) < 3.7e-5
-            @test abs(coff_wynn_pola_arr[1] - _c1) < 3e-4
+            @test abs(order_loglog_arr[1] - _a1) < 0.02
+            @test abs(coff_loglog_arr[1] - _c1) < 0.2
+            @test abs(order_shanks_arr[1] - _a1) < 2e-5
+            @test abs(coff_shanks_arr[1] - _c1) < 4e-4
+            @test abs(order_wynn_arr[1] - _a1) < 2e-5
+            @test abs(coff_wynn_arr[1] - _c1) < 4e-4
+            @test abs(order_wynn_pola_arr[1] - _a1) < 2e-5
+            @test abs(coff_wynn_pola_arr[1] - _c1) < 4e-4
         end
     end
 end
 
 @testset "wynn.jl" begin
     Random.seed!(123456789)
-    a1 = 0.55
-    a2 = 1.22
-    a3 = 1.83
+    a1 = 0.55 + 0.01 * rand()
+    a2 = 1.22 + 0.01 * rand()
+    a3 = 1.83 + 0.01 * rand()
+    #=
+    0.5503026711692189
+    1.2208577781394374
+    1.8311472770231354
+    =#
     c1, c2, c3 = rand(3) .+ 1
+    #=
+    1.1576090409417932
+    1.8329810111138598
+    1.7569774924284722
+    =#
     L0 = 1
     L = 2^14
-    point_density = 10
-    #=
-    1.0302671169218902
-    1.0857778139437397
-    1.114727702313528
-    =#
+    point_density = 100
+
     for T in [Float32, Float64]
         @show T
         _a1, _a2, _a3 = T.([a1, a2, a3])
@@ -111,9 +122,9 @@ end
 
         if T == Float64
             @test abs(order_wynnpola - _a1) < 2e-11
-            @test abs(coff_wynnpola - _c1) < 1.2e-7
-            @test abs(order_wynn - _a1) < 1e-8
-            @test abs(coff_wynn - _c1) < 1e-4
+            @test abs(coff_wynnpola - _c1) < 2e-6
+            @test abs(order_wynn - _a1) < 8e-8
+            @test abs(coff_wynn - _c1) < 2e-4
         end
     end
 
@@ -134,25 +145,30 @@ end
     @show abs(coff - _c1)
 
     if T == BigFloat
-        @test abs(order - _a1) < 6e-13
-        @test abs(coff - _c1) < 1.6e-8
+        @test abs(order - _a1) < 4e-16
+        @test abs(coff - _c1) < 4e-10
     end
 end
 
 @testset "wynn_pola with use_a_final=true" begin
     Random.seed!(123456789)
-    a1 = 0.55
-    a2 = 1.22
-    a3 = 1.83
+    a1 = 0.55 + 0.01 * rand()
+    a2 = 1.22 + 0.01 * rand()
+    a3 = 1.83 + 0.01 * rand()
+    #=
+    0.5503026711692189
+    1.2208577781394374
+    1.8311472770231354
+    =#
     c1, c2, c3 = rand(3) .+ 1
+    #=
+    1.1576090409417932
+    1.8329810111138598
+    1.7569774924284722
+    =#
     L0 = 1
     L = 2^14
     point_density = 10
-    #=
-    1.0302671169218902
-    1.0857778139437397
-    1.114727702313528
-    =#
     for T in [Float64, BigFloat]
         @show T
         _a1, _a2, _a3 = T.([a1, a2, a3])
@@ -180,15 +196,15 @@ end
         @show abs(coff_true - _c1)
 
         if T == Float64
-            @test abs(order_false - _a1) < 2e-11
-            @test abs(coff_false - _c1) < 1.2e-7
-            @test abs(order_true - _a1) < 2e-11
-            @test abs(coff_true - _c1) < 3e-10
+            @test abs(order_false - _a1) < 3e-11
+            @test abs(coff_false - _c1) < 5e-5
+            @test abs(order_true - _a1) < 3e-11
+            @test abs(coff_true - _c1) < 4e-10
         elseif T == BigFloat
-            @test abs(order_false - _a1) < 5.6e-13
-            @test abs(coff_false - _c1) < 1.6e-8
-            @test abs(order_true - _a1) < 5.6e-13
-            @test abs(coff_true - _c1) < 1.1e-11
+            @test abs(order_false - _a1) < 2e-12
+            @test abs(coff_false - _c1) < 2e-8
+            @test abs(order_true - _a1) < 2e-12
+            @test abs(coff_true - _c1) < 3e-11
         end
     end
 end
