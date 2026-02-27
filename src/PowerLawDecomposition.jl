@@ -3,15 +3,10 @@ module PowerLawDecomposition
 using LinearAlgebra
 using Interpolations
 
-export Method, power_solve
-export IterSeek, LeadingMethod, leading_solve, LogLog, Shanks, Wynn, WynnPola
-export MellinTrans
-export LSQ
-
-abstract type Method end
+export power_solve, leading_solve
+export IterSeek, WynnPola, Wynn
 
 include("kit.jl")
-include("iterseek/iterseek.jl")
-include("mellintrans.jl")
+include("iterseek.jl")
 
 end
