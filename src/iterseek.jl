@@ -210,7 +210,6 @@ function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
     k = method.k
     n = method.n
     interp_type = method.interp_type
-    points_per_interval = method.points_per_interval
 
     # 0. basic checks
     @assert n >= 3 && isodd(n) "Parameter n must be an odd integer >= 3"
@@ -218,7 +217,6 @@ function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
     method.use_a_final && @assert method.nc < method.n "nc must be less than n"
 
     grid_check(grid)
-    h, _ = get_point_num(grid)
     L_start, L_end = grid[1], grid[end]
 
     # 1. interpolate the original data to get a continuous function f_itp(x)
@@ -239,7 +237,7 @@ function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
     # 3. calculate interval integrals Svec
     # we uniformly sample M points in each interval [nodes[i], nodes[i+1]], then call your int_simpson
     Svec = zeros(T, n + 1)
-    M = points_per_interval
+    M = method.points_per_interval
     for i in 1:(n + 1)
         x_a, x_b = nodes[i], nodes[i + 1]
         local_h = (x_b - x_a) / (M - 1)
@@ -254,27 +252,48 @@ function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
 
     # 4. calculate apparent order sequences A and coefficient sequences C
     Avec = zeros(T, n)
+    ratio_vec = zeros(T, n)
 
     for i in 1:n
-        ratio = Svec[i + 1] / Svec[i]
-        # calculate apparent order
-        Avec[i] = 1 - log(ratio) / log(k)
+        ratio_vec[i] = Svec[i + 1] / Svec[i]
     end
+
+    # calculate apparent order
+    wynn_n = n
+    sign_flag = 0
+    while true
+        @assert n >= 3 "Svec is too short"
+        vr = view(ratio_vec, (wynn_n - n + 1):wynn_n)
+        if all(vr .> 0)
+            sign_flag = 1
+            break
+        elseif all(vr .< 0)
+            sign_flag = -1
+            break
+        else
+            n -= 2
+        end
+    end
+    @show n
+    vA = view(Avec, (wynn_n - n + 1):wynn_n)
+    vr = view(ratio_vec, (wynn_n - n + 1):wynn_n)
+    vA .= 1 .- log.(vr .* sign_flag) ./ log(k)
 
     # 5. perform Wynn acceleration
     # here we call the shared function wynn_epsilon_core discussed earlier
-    a_final = wynn_epsilon_core(Avec)
+    a_final = wynn_epsilon_core(vA)
 
     nc = method.nc
     n1 = method.use_a_final ? nc : n
+    @assert n1 <= n "n1 must be <= n"
     Cvec = zeros(T, n1)
 
-    for i in (n - n1 + 1):n
+    for i in (wynn_n - n1 + 1):wynn_n
         x_low, x_up = nodes[i + 1], nodes[i + 2]
         a_tmp = method.use_a_final ? a_final : Avec[i]
         denom = abs(a_tmp - 1) < eps(T) * 1000 ? log(x_up / x_low) :
                 (x_up^(1 - a_tmp) - x_low^(1 - a_tmp)) / (1 - a_tmp)
-        Cvec[i + n1 - n] = Svec[i + 1] / denom
+        Cvec[i - wynn_n + n1] = Svec[i + 1] / denom
     end
     c_final = wynn_epsilon_core(Cvec)
     return a_final, c_final
@@ -300,21 +319,134 @@ function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
     @assert length(method.wynn_pola_vec) >= order "number of leading methods must be >= norder"
     len = round(Int, method.scale1)
     N = length(f)
+    h = grid[2] - grid[1]
     fcopy = copy(f)
     order_vec = T[]
-    coff_vec = T[]
-    note_vec = []
+    df = zero(f)
     @show norm(fcopy)
     for i in 1:order
         @assert len <= N "scale for seeking leading item is too large"
         wynn_pola = method.wynn_pola_vec[i]
-        order, coff = leading_solve(view(fcopy, (N - len + 1):N),
-                                    view(grid, (N - len + 1):N), wynn_pola)
+        order, _ = leading_solve(view(fcopy, (N - len + 1):N),
+                                 view(grid, (N - len + 1):N), wynn_pola)
+        @show order
         push!(order_vec, order)
-        push!(coff_vec, coff)
-        fcopy .= fcopy .- coff .* grid .^ (-order)
+        fd_open!(df, fcopy, h)
+        fcopy .= grid .* df .+ order .* fcopy
         len = round(Int, len * r)
         @show norm(fcopy)
     end
-    return order_vec, coff_vec
+    return order_vec
+end
+
+struct ASP
+    wynn_pola::WynnPola
+    scale_rate::Real
+    scale1::Real
+    norder::Int
+    lenS::Int # initial length of Svec
+end
+
+function ASP(norder::Int, scale1::Real; wynn_pola::WynnPola=WynnPola(; k=1.3, n=21),
+             scale_rate::Real=1,
+             lenS::Int=(wynn_pola.n + ceil(Int, (norder - 1) / 2) * 2 + 1))
+    return ASP(wynn_pola, scale_rate, scale1, norder, lenS)
+end
+
+function power_solve_asp(f0::AbstractVector{T}, grid0::AbstractVector{T},
+                         asp::ASP) where {T<:Real}
+    @assert asp.scale_rate == 1 "scale_rate must be 1 for asp"
+
+    len = round(Int, asp.scale1)
+    N = length(f0)
+    order_vec = T[]
+    norder = asp.norder
+    method = asp.wynn_pola
+    nS = asp.lenS
+    @assert nS >= method.n + 1 "length of initial Svec must be >= n + 1"
+
+    f = view(f0, (N - len + 1):N)
+    grid = view(grid0, (N - len + 1):N)
+
+    k = method.k
+    n = method.n
+    wynn_n = method.n
+    interp_type = method.interp_type
+
+    # 0. basic checks
+    @assert n >= 3 && isodd(n) "Parameter n must be an odd integer >= 3"
+
+    grid_check(grid)
+    L_start, L_end = grid[1], grid[end]
+
+    itp_base = interpolate(f, interp_type)
+    grid_range = range(L_start, L_end; length=length(grid))
+    f_itp = scale(itp_base, grid_range)
+
+    nodes = zeros(T, nS + 1)
+    nodes[end] = L_end
+    for i in nS:-1:1
+        nodes[i] = nodes[i + 1] / k
+    end
+    @assert nodes[1] >= L_start "Grid too short for k=$k, nS=$nS. Needs start <= $(nodes[1])"
+
+    Svec = zeros(T, nS)
+    M = method.points_per_interval
+    for i in 1:nS
+        x_a, x_b = nodes[i], nodes[i + 1]
+        local_h = (x_b - x_a) / (M - 1)
+
+        local_x = range(x_a, x_b; length=M)
+        local_f = [f_itp(tx) for tx in local_x]
+
+        Svec[i] = int_simpson(local_f, local_h)
+    end
+
+    Avec = zeros(T, wynn_n)
+    ratio_vec = zeros(T, wynn_n)
+
+    for i in 1:norder
+        if n <= 1
+            println("Svec is too short, break with $(length(order_vec)) orders found")
+            break
+        end
+
+        for j in 1:n
+            ratio_vec[end - j + 1] = Svec[end - j + 1] / Svec[end - j]
+        end
+
+        sign_flag = 0
+        while true
+            @assert n >= 3 "Svec is too short"
+            vr = view(ratio_vec, (wynn_n - n + 1):wynn_n)
+            if all(vr .> 0)
+                sign_flag = 1
+                break
+            elseif all(vr .< 0)
+                sign_flag = -1
+                break
+            else
+                n -= 2
+            end
+        end
+        @show i, n
+        vA = view(Avec, (wynn_n - n + 1):wynn_n)
+        vr = view(ratio_vec, (wynn_n - n + 1):wynn_n)
+        vA .= 1 .- log.(vr .* sign_flag) ./ log(k)
+
+        a_final = wynn_epsilon_core(vA)
+
+        push!(order_vec, a_final)
+        i == norder && break
+
+        λ = k^(1 - a_final)
+        nS -= 1
+        for j in 1:nS
+            Svec[end + 1 - j] = Svec[end + 1 - j] - λ * Svec[end - j]
+        end
+
+        !(nS >= n + 1) && (n -= 2)
+    end
+
+    return order_vec
 end

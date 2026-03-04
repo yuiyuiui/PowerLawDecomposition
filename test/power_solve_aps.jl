@@ -29,20 +29,10 @@ h = T(1 / point_density)
 grid = [L0 + i * h for i in 0:((L - L0) * point_density)];
 f_data = f.(grid);
 
-f_data = BigFloat.(f_data);
-grid = BigFloat.(grid);
-nseek = 4
-is_use_a_final = false
-n1 = 21
-n2 = 21
-n3 = 21
-n4 = 21
-lm1 = WynnPola(; k=1.3, n=n1, use_a_final=is_use_a_final);
-lm2 = WynnPola(; k=1.3, n=n2, use_a_final=is_use_a_final);
-lm3 = WynnPola(; k=1.3, n=n3, use_a_final=is_use_a_final);
-lm4 = WynnPola(; k=1.3, n=n4, use_a_final=is_use_a_final);
-lm_vec = [lm1, lm2, lm3, lm4]
-iter_seek = IterSeek(lm_vec, 1, length(f_data), nseek)
-order_vec = power_solve(f_data, grid, iter_seek)
-@show n1, n2, n3
+#f_data = BigFloat.(f_data);
+#grid = BigFloat.(grid);
+
+nseek = 6
+asp = ASP(nseek, length(f_data); wynn_pola=WynnPola(; k=1.3, n=21), lenS=22)
+order_vec = power_solve_asp(f_data, grid, asp)
 @show norm.(order_vec .- _a_vec[1:nseek])
