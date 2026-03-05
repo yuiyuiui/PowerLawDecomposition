@@ -72,41 +72,52 @@ function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
         Svec[i] = int_simpson(view(f, idx_start:idx_end), h)
     end
 
-    # 3. calculate apparent order sequences A and coefficient sequences C
-    for i in 1:n
-        # Svec[i] corresponds to the interval [nvec[i], nvec[i+1]]
-        # Svec[i+1] corresponds to the interval [nvec[i+1], nvec[i+2]]
+    Avec = zeros(T, n)
+    ratio_vec = zeros(T, n)
 
-        # the corresponding physical coordinates (for calculating C)
-        # we use the coordinates of the "next" interval Svec[i+1], because it is closer to the far field
+    for i in 1:n
+        ratio_vec[i] = Svec[i + 1] / Svec[i]
+    end
+
+    # calculate apparent order
+    wynn_n = n
+    sign_flag = 0
+    while true
+        @assert n >= 3 "Svec is too short"
+        vr = view(ratio_vec, (wynn_n - n + 1):wynn_n)
+        if all(vr .> 0)
+            sign_flag = 1
+            break
+        elseif all(vr .< 0)
+            sign_flag = -1
+            break
+        else
+            n -= 2
+        end
+    end
+    @show n
+    vA = view(Avec, (wynn_n - n + 1):wynn_n)
+    vr = view(ratio_vec, (wynn_n - n + 1):wynn_n)
+    vA .= 1 .- log.(vr .* sign_flag) ./ log(k)
+    a_final = wynn_epsilon_core(vA)
+
+    # 3. calculate coefficient sequences C (aligned to the same tail region as Avec)
+    for i in (wynn_n - n + 1):wynn_n
         x_low = nvec[i + 1] * h
         x_up = nvec[i + 2] * h
 
-        # calculate local apparent order A_i
-        val_ratio = Svec[i + 1] / Svec[i]
-        # prevent log(0) or negative number (although it should not happen at the power law tail)
-        if val_ratio <= 0
-            error("Negative or zero ratio in sequence, cannot take log.")
-        end
-        Avec[i] = 1 - log(val_ratio) / log(k)
-
-        # inverse to find the local coefficient C_i
-        # Formula: c = S * (1-a) / (x_up^(1-a) - x_low^(1-a))
         a_tmp = Avec[i]
         denom = x_up^(1 - a_tmp) - x_low^(1 - a_tmp)
         if abs(denom) < 100 * eps(T)
-            Cvec[i] = zero(T) # numerical protection
+            Cvec[i] = zero(T)
         else
             Cvec[i] = Svec[i + 1] * (1 - a_tmp) / denom
         end
     end
 
-    # 4. perform Wynn's Epsilon Algorithm
-    # accelerate the A and C sequences respectively
-    a_refined = wynn_epsilon_core(Avec)
-    c_refined = wynn_epsilon_core(Cvec)
+    c_final = wynn_epsilon_core(view(Cvec, (wynn_n - n + 1):wynn_n))
 
-    return a_refined, c_refined
+    return a_final, c_final
 end
 
 """
@@ -118,32 +129,12 @@ Input a sequence S of length n (odd), output the accelerated limit value.
 function wynn_epsilon_core(S::AbstractVector{T}) where {T<:Real}
     n = length(S)
 
-    # eps table only needs two columns to iterate, for clarity here we use a one-dimensional array to iterate and update
-    # this is a in-place update technique (similar to the one-dimensional array generation of Pascal triangle)
-    # e_prev corresponds to epsilon_{k-2}, e_curr corresponds to epsilon_{k}
-
-    # initialization:
-    # e_curr (epsilon_0) is the input S
-    # e_prev (epsilon_-1) is all 0
-
     e_curr = copy(S)
     e_prev = zeros(T, n)
 
-    # we need to iterate n-1 times (corresponding to columns 1 to n-1)
-    # the final result is in e_curr[1] (shrink to the pyramid tip)
-    # but the structure of Wynn's algorithm is:
-    # Col 0 (S): n items
-    # Col 1 (1/dS): n-1 items
-    # Col 2 (Shanks): n-2 items
-    # ...
-    # Col n-1: 1 item
-
-    # we use `width` to represent the length of the current column
     for col in 1:(n - 1)
         width = n - col
 
-        # temporarily store the next round of e_prev (i.e. the current e_curr)
-        # because e_curr[i] update needs to use the old e_curr[i] and e_curr[i+1]
         e_next_prev = copy(e_curr)
 
         for i in 1:width
@@ -156,14 +147,52 @@ function wynn_epsilon_core(S::AbstractVector{T}) where {T<:Real}
             end
         end
 
-        # update e_prev to the e_curr before the start of this round (for the k-2 item in the next round)
         e_prev = e_next_prev
     end
 
-    # the result is in the first element of e_curr
-    # note: in Wynn's algorithm, even columns (col=2, 4...) are approximate values, odd columns are auxiliary values.
-    # when n is odd, the last column col = n-1 is even (e.g. n=3, col=2), which is exactly what we need.
     return e_curr[1]
+end
+
+"""
+    wynn_epsilon_core_v2(S)
+
+Improved Wynn's Epsilon algorithm with:
+- Even-column guard: ensures the returned value is always from an even column
+  (the meaningful accelerated estimate), even when input length is even.
+- Safer denominator protection: when the denominator is degenerate, skip the
+  correction instead of injecting a large regularized value.
+- In-place column update to avoid per-column allocations.
+"""
+function wynn_epsilon_core_v2(S::AbstractVector{T}) where {T<:Real}
+    n = length(S)
+    work_n = isodd(n) ? n : n - 1
+
+    e_prev = zeros(T, work_n + 1)
+    e_curr = copy(S[1:work_n])
+
+    result = S[end]
+
+    for j in 1:(work_n - 1)
+        width = work_n - j
+        for i in 1:width
+            denom = e_curr[i + 1] - e_curr[i]
+
+            if abs(denom) <= eps(T) * 10
+                tmp = e_prev[i + 1]
+            else
+                tmp = e_prev[i + 1] + one(T) / denom
+            end
+
+            e_prev[i] = e_curr[i]
+            e_curr[i] = tmp
+        end
+
+        if iseven(j)
+            result = e_curr[1]
+        end
+    end
+
+    return result
 end
 
 #
@@ -305,7 +334,7 @@ end
 # scale1 is the initial scale of the signal udes for seeking orders
 # scale_rate is the rate of the scales of the signal used for seeking orders
 struct IterSeek
-    wynn_pola_vec::Vector{WynnPola}
+    wynn_pola_vec::Union{Vector{WynnPola},Vector{Wynn}}
     scale_rate::Real
     scale1::Real
     norder::Int
@@ -326,9 +355,9 @@ function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
     @show norm(fcopy)
     for i in 1:order
         @assert len <= N "scale for seeking leading item is too large"
-        wynn_pola = method.wynn_pola_vec[i]
+        wynn = method.wynn_pola_vec[i]
         order, _ = leading_solve(view(fcopy, (N - len + 1):N),
-                                 view(grid, (N - len + 1):N), wynn_pola)
+                                 view(grid, (N - len + 1):N), wynn)
         @show order
         push!(order_vec, order)
         fd_open!(df, fcopy, h)

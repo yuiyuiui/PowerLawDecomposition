@@ -1,3 +1,8 @@
+我现在有3个问题
+
+1. 运行下列代码发现
+
+```julia
 using Test, Random, LinearAlgebra
 using PowerLawDecomposition
 
@@ -41,3 +46,11 @@ using PowerLawDecomposition
         @show res[i]
     end
 end
+```
+即使是用F128生产数据，基本上也最多只能算准前6项。但是问题在于用F128产生的数据，应该包含远比F64更多的信息，为什么会算不准呢。
+
+假设说F64时候的误差主要来源是数值精度，那为什么用F128生产数据，应该包含远比F64更多的信息，为什么会算不准呢。
+
+还是说实际上误差来源于别处。请仔细分析代码，进行数值测试，给出改进方案并测试改进方案的精度
+
+ps：代码注释用英文写
