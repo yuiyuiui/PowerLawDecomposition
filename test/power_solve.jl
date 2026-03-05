@@ -38,10 +38,10 @@ using PowerLawDecomposition
     n2 = 21
     n3 = 21
     n4 = 21
-    lm1 = WynnPola(; k=1.3, n=n1, use_a_final=is_use_a_final)
-    lm2 = WynnPola(; k=1.3, n=n2, use_a_final=is_use_a_final)
-    lm3 = WynnPola(; k=1.3, n=n3, use_a_final=is_use_a_final)
-    lm4 = WynnPola(; k=1.3, n=n4, use_a_final=is_use_a_final)
+    lm1 = WynnPola(; k=big"1.3", n=n1, use_a_final=is_use_a_final)
+    lm2 = WynnPola(; k=big"1.3", n=n2, use_a_final=is_use_a_final)
+    lm3 = WynnPola(; k=big"1.3", n=n3, use_a_final=is_use_a_final)
+    lm4 = WynnPola(; k=big"1.3", n=n4, use_a_final=is_use_a_final)
     lm_vec = [lm1, lm2, lm3, lm4]
     iter_seek = IterSeek(lm_vec, 1, length(f_data), nseek)
     order_vec = power_solve(f_data, grid, iter_seek)

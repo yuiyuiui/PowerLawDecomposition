@@ -30,7 +30,7 @@ end
 
 function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
                        method::Wynn) where {T<:Real}
-    k = method.k
+    k = T(method.k)
     n = method.n
     # 0. parameter check
     @assert n >= 3 && isodd(n) "Parameter n must be an odd integer >= 3 for Wynn's epsilon algorithm"
@@ -236,7 +236,7 @@ end
 
 function leading_solve(f::AbstractVector{T}, grid::AbstractVector{T},
                        method::WynnPola) where {T<:Real}
-    k = method.k
+    k = T(method.k)
     n = method.n
     interp_type = method.interp_type
 
@@ -342,11 +342,11 @@ end
 
 function power_solve(f::AbstractVector{T}, grid::AbstractVector{T},
                      method::IterSeek) where {T<:Real}
-    r = method.scale_rate
+    r = T(method.scale_rate)
     order = method.norder
     @assert r >= 1 "scale_rate must be >= 1"
     @assert length(method.wynn_pola_vec) >= order "number of leading methods must be >= norder"
-    len = round(Int, method.scale1)
+    len = round(Int, T(method.scale1))
     N = length(f)
     h = grid[2] - grid[1]
     fcopy = copy(f)
@@ -376,8 +376,8 @@ struct ASP
     lenS::Int # initial length of Svec
 end
 
-function ASP(norder::Int, scale1::Real; wynn_pola::WynnPola=WynnPola(; k=1.3, n=21),
-             scale_rate::Real=1,
+function ASP(norder::Int, scale1::Real; wynn_pola::WynnPola=WynnPola(; k=big"1.3", n=21),
+             scale_rate::Real=big"1",
              lenS::Int=(wynn_pola.n + ceil(Int, (norder - 1) / 2) * 2 + 1))
     return ASP(wynn_pola, scale_rate, scale1, norder, lenS)
 end
@@ -397,7 +397,7 @@ function power_solve_asp(f0::AbstractVector{T}, grid0::AbstractVector{T},
     f = view(f0, (N - len + 1):N)
     grid = view(grid0, (N - len + 1):N)
 
-    k = method.k
+    k = T(method.k)
     n = method.n
     wynn_n = method.n
     interp_type = method.interp_type

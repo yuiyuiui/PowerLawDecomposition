@@ -34,7 +34,7 @@ using PowerLawDecomposition
     #grid = BigFloat.(grid);
 
     nseek = 7
-    asp = ASP(nseek, length(f_data); wynn_pola=WynnPola(; k=1.3, n=21))
+    asp = ASP(nseek, length(f_data); wynn_pola=WynnPola(; k=big"1.3", n=21))
     order_vec = power_solve_asp(f_data, grid, asp)
     res = norm.(order_vec .- _a_vec[1:nseek])
     for i in 1:nseek
