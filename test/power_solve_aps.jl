@@ -20,7 +20,8 @@ using PowerLawDecomposition
     end
 
     L0 = 1
-    L = 2^14
+    L = 2^16
+    @show L
     point_density = 10
 
     _a_vec = T.(a_vec)
@@ -33,7 +34,7 @@ using PowerLawDecomposition
     #f_data = BigFloat.(f_data);
     #grid = BigFloat.(grid);
 
-    nseek = 7
+    nseek = 3
     asp = ASP(nseek, length(f_data); wynn_pola=WynnPola(; k=big"1.3", n=21))
     order_vec = power_solve_asp(f_data, grid, asp)
     res = norm.(order_vec .- _a_vec[1:nseek])
