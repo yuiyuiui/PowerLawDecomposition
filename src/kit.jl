@@ -1,6 +1,7 @@
 function uniform_check(grid::AbstractVector{<:Real})
     dgrif = diff(grid)
-    tol = length(grid) * eps(eltype(grid))^(2 // 3)
+    epsT = max(eps(), eps(eltype(grid)))
+    tol = length(grid) * epsT^(2 // 3)
     @. dgrif = abs(dgrif - dgrif[1])
     maxerr = maximum(dgrif)
     maxerr > tol &&
@@ -43,4 +44,30 @@ function int_simpson(f::AbstractVector{<:Real}, h::Real)
         res += (f[N] + f[N-1]) * h / 2
         return res
     end
+end
+
+const fd_coff_central = [1 // 280, -4 // 105, 1 // 5, -4 // 5, 0, 4 // 5, -1 // 5,
+                         4 // 105, -1 // 280]
+const fd_coff_forward = [-761 // 280, 8, -14, 56 // 3, -35 // 2, 56 // 5, -14 // 3, 8 // 7,
+                         -1 // 8]
+
+function fd_open!(u::AbstractVector{<:Number}, v::AbstractVector{<:Number},
+                  h::Real)
+    n = length(v)
+    @assert n >= 12
+    @assert length(u) == n
+    @inbounds for i in 1:4
+        u[i] = dot(fd_coff_forward, view(v, i:(i + 8))) / h
+    end
+    @inbounds for i in 5:(n - 4)
+        u[i] = dot(fd_coff_central, view(v, (i - 4):(i + 4))) / h
+    end
+    @inbounds for i in (n - 3):n
+        u[i] = -dot(fd_coff_forward, view(v, i:-1:(i - 8))) / h
+    end
+    return u
+end
+
+function fd_open(v::AbstractVector{<:Number}, h::Real)
+    return fd_open!(zeros(eltype(v), length(v)), v, h)
 end
