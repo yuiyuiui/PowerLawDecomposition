@@ -3,11 +3,15 @@ module PowerLawDecomposition
 using LinearAlgebra
 using Interpolations
 
-export power_solve, power_solve_asp, leading_solve
-export IterSeek, ASP, WynnPola, Wynn
-export wynn_epsilon_core, wynn_epsilon_core_v2
+include("math/sequence.jl")
+include("math/pola.jl")
+include("math/integral.jl")
+include("math/diff.jl")
 
-include("kit.jl")
-include("iterseek.jl")
+
+export wynn_epsilon_core
+export PolaMethod, LagrangePola, BsplinePola, interpolate, bspline_interp, build_bspline_itp
+export IntegralMethod, Simpson, integrate
+export fd8, fd8!
 
 end
