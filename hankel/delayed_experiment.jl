@@ -21,7 +21,7 @@ function make_test_signal(::Type{T}, N, L0, L_end, h) where {T}
     a_true = T.(collect(1:N) .* 0.5)
     c_true = ones(T, N)
     M = round(Int, Float64(L_end - L0) / Float64(h)) + 1
-    grid = [T(L0) + T(h) * i for i in 0:(M-1)]
+    grid = [T(L0) + T(h) * i for i in 0:(M - 1)]
     f = [sum(c_true .* exp.(-a_true .* x)) for x in grid]
     return grid, f, a_true, c_true
 end
@@ -93,7 +93,8 @@ function experiment_core_comparison()
         println("\n  域 $label, N=$N, f(x)=Σexp(-0.5n·x)")
         println("  " * "-" ^ 88)
         @printf("  %-6s | %4s | %-14s | %-14s | %-14s | %-14s\n",
-                "h", "M", "default(L=M/2)", "theory(L=3N)", "subsample(8N)", "delayed(auto)")
+                "h", "M", "default(L=M/2)", "theory(L=3N)", "subsample(8N)",
+                "delayed(auto)")
         println("  " * "-" ^ 88)
 
         for h_val in [0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002]
@@ -137,12 +138,10 @@ function experiment_stride_scan()
 
     N = 10
 
-    for (L0, L_end, h_val, label) in [
-        (1.0, 5.0, 0.01, "[1,5] h=0.01 M=401"),
-        (1.0, 5.0, 0.005, "[1,5] h=0.005 M=801"),
-        (0.0, 20.0, 0.01, "[0,20] h=0.01 M=2001"),
-        (0.0, 20.0, 0.1, "[0,20] h=0.1 M=201"),
-    ]
+    for (L0, L_end, h_val, label) in [(1.0, 5.0, 0.01, "[1,5] h=0.01 M=401"),
+                                      (1.0, 5.0, 0.005, "[1,5] h=0.005 M=801"),
+                                      (0.0, 20.0, 0.01, "[0,20] h=0.01 M=2001"),
+                                      (0.0, 20.0, 0.1, "[0,20] h=0.1 M=201")]
         grid, f, a_true, _ = make_test_signal(Float64, N, L0, L_end, h_val)
         M = length(grid)
         h = Float64(grid[2] - grid[1])
@@ -161,11 +160,19 @@ function experiment_stride_scan()
             err = res !== nothing ? max_a_error(res, a_true) : NaN
 
             note = ""
-            if k == 1; note = "(标准 Hankel)"; end
+            if k == 1
+                ;
+                note = "(标准 Hankel)";
+            end
 
             res_auto = safe_run(() -> matrix_pencil_delayed(grid, f, N))
-            auto_stride = max(1, round(Int, (Float64(grid[end]) - Float64(grid[1])) / (5 * N) / h))
-            if k == auto_stride; note *= " ← auto"; end
+            auto_stride = max(1,
+                              round(Int,
+                                    (Float64(grid[end]) - Float64(grid[1])) / (5 * N) / h))
+            if k == auto_stride
+                ;
+                note *= " ← auto";
+            end
 
             @printf("  %4d   | %-7.4f | %5d | %.3e       | %s\n",
                     k, h_eff, nrow, err, note)
@@ -173,7 +180,8 @@ function experiment_stride_scan()
 
         res_auto = safe_run(() -> matrix_pencil_delayed(grid, f, N))
         err_auto = res_auto !== nothing ? max_a_error(res_auto, a_true) : NaN
-        auto_stride = max(1, round(Int, (Float64(grid[end]) - Float64(grid[1])) / (5 * N) / h))
+        auto_stride = max(1,
+                          round(Int, (Float64(grid[end]) - Float64(grid[1])) / (5 * N) / h))
         @printf("  auto(%d) — max|Δa| = %.3e\n", auto_stride, err_auto)
 
         res_sub = safe_run(() -> matrix_pencil_subsample(grid, f, N))
@@ -194,10 +202,8 @@ function experiment_row_comparison()
     N = 10
     L = 3 * N  # = 30
 
-    for (L0, L_end, h_val, label) in [
-        (1.0, 5.0, 0.005, "[1,5] h=0.005"),
-        (0.0, 20.0, 0.01, "[0,20] h=0.01"),
-    ]
+    for (L0, L_end, h_val, label) in [(1.0, 5.0, 0.005, "[1,5] h=0.005"),
+                                      (0.0, 20.0, 0.01, "[0,20] h=0.01")]
         grid, f, a_true, _ = make_test_signal(Float64, N, L0, L_end, h_val)
         M = length(grid)
         h = Float64(grid[2] - grid[1])
@@ -241,14 +247,12 @@ function experiment_robustness()
     println("  实验 4: 不同 N 值的鲁棒性测试")
     println("=" ^ 90)
 
-    for (N, L0, L_end, h_val) in [
-        (3, 1.0, 5.0, 0.01),
-        (5, 1.0, 5.0, 0.01),
-        (10, 1.0, 5.0, 0.01),
-        (3, 0.0, 10.0, 0.01),
-        (5, 0.0, 10.0, 0.01),
-        (10, 0.0, 10.0, 0.01),
-    ]
+    for (N, L0, L_end, h_val) in [(3, 1.0, 5.0, 0.01),
+                                  (5, 1.0, 5.0, 0.01),
+                                  (10, 1.0, 5.0, 0.01),
+                                  (3, 0.0, 10.0, 0.01),
+                                  (5, 0.0, 10.0, 0.01),
+                                  (10, 0.0, 10.0, 0.01)]
         grid, f, a_true, _ = make_test_signal(Float64, N, L0, L_end, h_val)
         M = length(grid)
 
@@ -278,11 +282,9 @@ function experiment_delayed_with_refinement()
 
     N = 10
 
-    for (L0, L_end, h_val, label) in [
-        (1.0, 5.0, 0.01, "[1,5] h=0.01"),
-        (1.0, 5.0, 0.005, "[1,5] h=0.005"),
-        (0.0, 20.0, 0.01, "[0,20] h=0.01"),
-    ]
+    for (L0, L_end, h_val, label) in [(1.0, 5.0, 0.01, "[1,5] h=0.01"),
+                                      (1.0, 5.0, 0.005, "[1,5] h=0.005"),
+                                      (0.0, 20.0, 0.01, "[0,20] h=0.01")]
         grid, f, a_true, _ = make_test_signal(Float64, N, L0, L_end, h_val)
         M = length(grid)
 
@@ -320,16 +322,14 @@ function experiment_auto_stride()
             "场景", "M", "k_A", "k_B", "k_C", "err_A", "err_B", "err_C", "err_穷举最优")
     println("  " * "-" ^ 120)
 
-    for (L0, L_end, h_val) in [
-        (1.0, 5.0, 0.1),
-        (1.0, 5.0, 0.05),
-        (1.0, 5.0, 0.01),
-        (1.0, 5.0, 0.005),
-        (0.0, 20.0, 0.1),
-        (0.0, 20.0, 0.05),
-        (0.0, 20.0, 0.01),
-        (0.0, 20.0, 0.005),
-    ]
+    for (L0, L_end, h_val) in [(1.0, 5.0, 0.1),
+                               (1.0, 5.0, 0.05),
+                               (1.0, 5.0, 0.01),
+                               (1.0, 5.0, 0.005),
+                               (0.0, 20.0, 0.1),
+                               (0.0, 20.0, 0.05),
+                               (0.0, 20.0, 0.01),
+                               (0.0, 20.0, 0.005)]
         grid, f, a_true, _ = make_test_signal(Float64, N, L0, L_end, h_val)
         M = length(grid)
         h = Float64(grid[2] - grid[1])
@@ -346,13 +346,16 @@ function experiment_auto_stride()
             end
         end
 
-        err_A = let r = safe_run(() -> matrix_pencil_delayed(grid, f, N; stride=k_A, pencil_L=L))
+        err_A = let r = safe_run(() -> matrix_pencil_delayed(grid, f, N; stride=k_A,
+                                                             pencil_L=L))
             r !== nothing ? max_a_error(r, a_true) : NaN
         end
-        err_B = let r = safe_run(() -> matrix_pencil_delayed(grid, f, N; stride=k_B, pencil_L=L))
+        err_B = let r = safe_run(() -> matrix_pencil_delayed(grid, f, N; stride=k_B,
+                                                             pencil_L=L))
             r !== nothing ? max_a_error(r, a_true) : NaN
         end
-        err_C = let r = safe_run(() -> matrix_pencil_delayed(grid, f, N; stride=k_C, pencil_L=L))
+        err_C = let r = safe_run(() -> matrix_pencil_delayed(grid, f, N; stride=k_C,
+                                                             pencil_L=L))
             r !== nothing ? max_a_error(r, a_true) : NaN
         end
 

@@ -4,7 +4,7 @@ struct LagrangePola <: PolaMethod
     hw::Int
 end
 
-function LagrangePola(; hw::Int = 10)
+function LagrangePola(; hw::Int=10)
     @assert hw >= 3 "hw must be at least 3"
     return LagrangePola(hw)
 end
@@ -73,7 +73,8 @@ end
 
 B-spline interpolation. precision is O(h⁴).
 """
-function bspline_interp(grid::AbstractVector{T}, f::AbstractVector{T}, x::T, pm::BsplinePola) where {T}
+function bspline_interp(grid::AbstractVector{T}, f::AbstractVector{T}, x::T,
+                        pm::BsplinePola) where {T}
     itp = build_bspline_itp(grid, f)
     return itp(x)
 end

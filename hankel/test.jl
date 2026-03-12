@@ -166,12 +166,10 @@ println("\n" * "="^70)
 println("  PRECISION COMPARISON REPORT")
 println("="^70)
 
-test_cases = [
-    ("2-exp simple",  [3.0, 2.0],         [1.0, 3.0],         50, 51),
-    ("3-exp mixed",   [1.0, 2.0, 3.0],    [0.5, 1.5, 4.0],    80, 81),
-    ("2-exp close",   [1.0, 1.5],         [1.0, 1.2],          100, 101),
-    ("2-exp spread",  [1.0, 1.0],         [0.1, 10.0],         100, 101),
-]
+test_cases = [("2-exp simple", [3.0, 2.0], [1.0, 3.0], 50, 51),
+              ("3-exp mixed", [1.0, 2.0, 3.0], [0.5, 1.5, 4.0], 80, 81),
+              ("2-exp close", [1.0, 1.5], [1.0, 1.2], 100, 101),
+              ("2-exp spread", [1.0, 1.0], [0.1, 10.0], 100, 101)]
 
 for (T, label) in [(Float32, "Float32"), (Float64, "Float64"), (BigFloat, "BigFloat")]
     println("\n── $label ─────────────────────────────────")

@@ -1,6 +1,6 @@
 abstract type IntegralMethod end
 
-struct Simpson<: IntegralMethod
+struct Simpson <: IntegralMethod
 end
 
 function integrate(f::AbstractVector{<:Real}, h::Real, im::Simpson)

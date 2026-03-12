@@ -54,7 +54,7 @@ end
 选 RMSE 最小的 L。
 """
 function recommend_L_crossval(grid::AbstractVector{T}, f::AbstractVector{T}, N::Int;
-                              L_candidates::Union{Nothing, Vector{Int}}=nothing,
+                              L_candidates::Union{Nothing,Vector{Int}}=nothing,
                               verbose::Bool=false) where {T}
     M = length(grid)
 
@@ -74,8 +74,8 @@ function recommend_L_crossval(grid::AbstractVector{T}, f::AbstractVector{T}, N::
 
     grid_train = grid[1:split_idx]
     f_train = f[1:split_idx]
-    grid_val = grid[(split_idx+1):end]
-    f_val = f[(split_idx+1):end]
+    grid_val = grid[(split_idx + 1):end]
+    f_val = f[(split_idx + 1):end]
 
     best_L = L_candidates[1]
     best_rmse = T(Inf)
@@ -116,7 +116,7 @@ end
 比较恢复参数 a 的一致性（标准差）。选标准差最小的 L。
 """
 function recommend_L_stability(grid::AbstractVector{T}, f::AbstractVector{T}, N::Int;
-                               L_candidates::Union{Nothing, Vector{Int}}=nothing,
+                               L_candidates::Union{Nothing,Vector{Int}}=nothing,
                                verbose::Bool=false) where {T}
     M = length(grid)
 
@@ -257,7 +257,7 @@ end
 
 返回 (h_recommended, M_recommended)。
 """
-function recommend_h_theory(L0::Real, L_end::Real, N::Int, ::Type{T}=Float64) where {T}
+function recommend_h_theory(L0::Real, L_end::Real, N::Int, (::Type{T})=Float64) where {T}
     domain_len = Float64(L_end - L0)
     M_opt = clamp(8 * N, 2 * N + 1, round(Int, domain_len / 0.001))
     h_opt = domain_len / (M_opt - 1)
@@ -289,8 +289,8 @@ function recommend_h_crossval(grid_fine::AbstractVector{T}, f_fine::AbstractVect
     end
     length(strides) < 3 && return (h_fine, M_fine)
 
-    results = Dict{Int, Vector{Float64}}()
-    rmses = Dict{Int, Float64}()
+    results = Dict{Int,Vector{Float64}}()
+    rmses = Dict{Int,Float64}()
 
     for k in strides
         indices = 1:k:M_fine
@@ -314,7 +314,7 @@ function recommend_h_crossval(grid_fine::AbstractVector{T}, f_fine::AbstractVect
     valid_ks = sort(collect(keys(results)))
     length(valid_ks) < 3 && return (h_fine, M_fine)
 
-    stability = Dict{Int, Float64}()
+    stability = Dict{Int,Float64}()
     for i in 2:(length(valid_ks) - 1)
         k = valid_ks[i]
         k_prev = valid_ks[i - 1]
@@ -354,7 +354,7 @@ function make_test_signal(::Type{T}, N, L0, L_end, h) where {T}
     a_true = T.(collect(1:N) .* 0.5)
     c_true = ones(T, N)
     M = round(Int, Float64(L_end - L0) / Float64(h)) + 1
-    grid = [T(L0) + T(h) * i for i in 0:(M-1)]
+    grid = [T(L0) + T(h) * i for i in 0:(M - 1)]
     f = [sum(c_true .* exp.(-a_true .* x)) for x in grid]
     return grid, f, a_true, c_true
 end
@@ -382,13 +382,11 @@ function experiment_L_selection()
     println("=" ^ 80)
 
     N = 10
-    configs = [
-        (L0=1.0, L_end=5.0, h=0.1, label="[1,5] h=0.1 M=41"),
-        (L0=1.0, L_end=5.0, h=0.05, label="[1,5] h=0.05 M=81"),
-        (L0=0.0, L_end=4.0, h=0.1, label="[0,4] h=0.1 M=41"),
-        (L0=1.0, L_end=20.0, h=0.1, label="[1,20] h=0.1 M=191"),
-        (L0=0.0, L_end=20.0, h=0.1, label="[0,20] h=0.1 M=201"),
-    ]
+    configs = [(L0=1.0, L_end=5.0, h=0.1, label="[1,5] h=0.1 M=41"),
+               (L0=1.0, L_end=5.0, h=0.05, label="[1,5] h=0.05 M=81"),
+               (L0=0.0, L_end=4.0, h=0.1, label="[0,4] h=0.1 M=41"),
+               (L0=1.0, L_end=20.0, h=0.1, label="[1,20] h=0.1 M=191"),
+               (L0=0.0, L_end=20.0, h=0.1, label="[0,20] h=0.1 M=201")]
 
     for cfg in configs
         grid, f, a_true, _ = make_test_signal(Float64, N, cfg.L0, cfg.L_end, cfg.h)
@@ -404,7 +402,7 @@ function experiment_L_selection()
                 L_th, L_cv, L_st, L_default)
 
         for (tag, Lv) in [("default(M/2)", L_default), ("theory", L_th),
-                           ("crossval", L_cv), ("stability", L_st)]
+                          ("crossval", L_cv), ("stability", L_st)]
             res = try
                 matrix_pencil(grid, f, N; pencil_L=Lv)
             catch
@@ -460,17 +458,23 @@ function experiment_h_with_fixed_L()
 
         res_3n = try
             matrix_pencil(grid, f, N; pencil_L=L_3n)
-        catch; nothing; end
+        catch
+            ; nothing;
+        end
         err_3n = res_3n !== nothing ? max_a_error(res_3n, a_true) : NaN
 
         res_half = try
             matrix_pencil(grid, f, N; pencil_L=L_half)
-        catch; nothing; end
+        catch
+            ; nothing;
+        end
         err_half = res_half !== nothing ? max_a_error(res_half, a_true) : NaN
 
         res_sub = try
             matrix_pencil_subsample(grid, f, N)
-        catch; nothing; end
+        catch
+            ; nothing;
+        end
         err_sub = res_sub !== nothing ? max_a_error(res_sub, a_true) : NaN
 
         @printf("  %-6.3f | %4d | %2d | %.3e        | %.3e        | %.3e\n",
@@ -491,17 +495,23 @@ function experiment_h_with_fixed_L()
 
         res_3n = try
             matrix_pencil(grid, f, N; pencil_L=L_3n)
-        catch; nothing; end
+        catch
+            ; nothing;
+        end
         err_3n = res_3n !== nothing ? max_a_error(res_3n, a_true) : NaN
 
         res_half = try
             matrix_pencil(grid, f, N; pencil_L=L_half)
-        catch; nothing; end
+        catch
+            ; nothing;
+        end
         err_half = res_half !== nothing ? max_a_error(res_half, a_true) : NaN
 
         res_sub = try
             matrix_pencil_subsample(grid, f, N)
-        catch; nothing; end
+        catch
+            ; nothing;
+        end
         err_sub = res_sub !== nothing ? max_a_error(res_sub, a_true) : NaN
 
         @printf("  %-6.3f | %4d | %2d | %.3e        | %.3e        | %.3e\n",
@@ -549,12 +559,20 @@ function experiment_h_selection()
 
             res = try
                 matrix_pencil(grid_sub, f_sub, N; pencil_L=L)
-            catch; nothing; end
+            catch
+                ; nothing;
+            end
             err = res !== nothing ? max_a_error(res, a_true) : NaN
 
             marker = ""
-            if abs(h_eff - h_th) < 0.001; marker = " ← 理论推荐"; end
-            if abs(h_eff - h_cv) < 0.001; marker = " ← 交叉验证推荐"; end
+            if abs(h_eff - h_th) < 0.001
+                ;
+                marker = " ← 理论推荐";
+            end
+            if abs(h_eff - h_cv) < 0.001
+                ;
+                marker = " ← 交叉验证推荐";
+            end
 
             @printf("  %4d   | %-6.3f | %4d  | %3d | %.3e%s\n",
                     k, h_eff, M_eff, L, err, marker)
@@ -570,12 +588,10 @@ function experiment_auto_comparison()
     println("=" ^ 80)
 
     N = 10
-    configs = [
-        (L0=1.0, L_end=5.0, h=0.1, label="[1,5] h=0.1"),
-        (L0=1.0, L_end=5.0, h=0.02, label="[1,5] h=0.02"),
-        (L0=0.0, L_end=20.0, h=0.1, label="[0,20] h=0.1"),
-        (L0=0.0, L_end=20.0, h=0.02, label="[0,20] h=0.02"),
-    ]
+    configs = [(L0=1.0, L_end=5.0, h=0.1, label="[1,5] h=0.1"),
+               (L0=1.0, L_end=5.0, h=0.02, label="[1,5] h=0.02"),
+               (L0=0.0, L_end=20.0, h=0.1, label="[0,20] h=0.1"),
+               (L0=0.0, L_end=20.0, h=0.02, label="[0,20] h=0.02")]
 
     println("\n  场景               | 方法         | max|Δa|     | 恢复 N")
     println("  " * "-" ^ 65)
@@ -584,17 +600,18 @@ function experiment_auto_comparison()
         grid, f, a_true, _ = make_test_signal(Float64, N, cfg.L0, cfg.L_end, cfg.h)
         M = length(grid)
 
-        methods = [
-            ("default", () -> matrix_pencil(grid, f, N)),
-            ("auto_theory", () -> matrix_pencil_auto(grid, f, N; method=:theory)),
-            ("auto_crossval", () -> matrix_pencil_auto(grid, f, N; method=:crossval)),
-            ("subsample", () -> matrix_pencil_subsample(grid, f, N)),
-        ]
+        methods = [("default", () -> matrix_pencil(grid, f, N)),
+                   ("auto_theory", () -> matrix_pencil_auto(grid, f, N; method=:theory)),
+                   ("auto_crossval",
+                    () -> matrix_pencil_auto(grid, f, N; method=:crossval)),
+                   ("subsample", () -> matrix_pencil_subsample(grid, f, N))]
 
         for (mname, mfunc) in methods
             res = try
                 mfunc()
-            catch; nothing; end
+            catch
+                ; nothing;
+            end
 
             if res !== nothing
                 err = max_a_error(res, a_true)

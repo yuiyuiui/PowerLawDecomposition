@@ -28,7 +28,10 @@ function experiment_svd_spectrum()
     L0, L = 1, 5
 
     for T in [Float64, BigFloat]
-        if T == BigFloat; setprecision(BigFloat, 256); end
+        if T == BigFloat
+            ;
+            setprecision(BigFloat, 256);
+        end
 
         d = T(1 // 2)
         a_vec = collect(1:N) .* d
@@ -121,7 +124,8 @@ function experiment_error_isolation()
     @printf("  场景 B (输入噪声):   max|Δa| = %.3e\n", err_b)
     @printf("  场景 C (全Float64):  max|Δa| = %.3e\n", err_c)
     @printf("\n  Source 1 (输入精度):  B/A = %.1e × (B 相对 A 的劣化)\n", err_b / max(err_a, 1e-300))
-    @printf("  Source 3 (SVD精度):   C/B = %.2f × (C 相对 B 的额外劣化)\n", err_c / max(err_b, 1e-300))
+    @printf("  Source 3 (SVD精度):   C/B = %.2f × (C 相对 B 的额外劣化)\n",
+            err_c / max(err_b, 1e-300))
     println("\n  结论:")
     if err_b / max(err_a, 1e-300) > 1e6 && err_c / max(err_b, 1e-300) < 10
         println("  → Source 1 (输入精度) 是绝对主因。")
@@ -159,7 +163,7 @@ function experiment_grid_sensitivity()
     for L0_val in [0, 0.5, 1, 2]
         h_val = 0.1
         M = round(Int, 4.0 / h_val) + 1
-        grid_f64 = Float64[L0_val + h_val * i for i in 0:(M-1)]
+        grid_f64 = Float64[L0_val + h_val * i for i in 0:(M - 1)]
         f_f64 = Float64[sum(exp.(-Float64.(a_true) .* x)) for x in grid_f64]
 
         grid_big = BigFloat.(grid_f64)
@@ -202,7 +206,7 @@ function experiment_grid_sensitivity()
     for h_val in [0.2, 0.1, 0.05, 0.02, 0.01]
         L0_val = 1.0
         M = round(Int, 4.0 / h_val) + 1
-        grid_f64 = Float64[L0_val + h_val * i for i in 0:(M-1)]
+        grid_f64 = Float64[L0_val + h_val * i for i in 0:(M - 1)]
         f_f64 = Float64[sum(exp.(-Float64.(a_true) .* x)) for x in grid_f64]
 
         res = try
@@ -236,7 +240,7 @@ function experiment_grid_sensitivity()
     for L_end in [3, 5, 10, 20]
         h_val = 0.1
         M = round(Int, (L_end - 1.0) / h_val) + 1
-        grid_f64 = Float64[1.0 + h_val * i for i in 0:(M-1)]
+        grid_f64 = Float64[1.0 + h_val * i for i in 0:(M - 1)]
         f_f64 = Float64[sum(exp.(-Float64.(a_true) .* x)) for x in grid_f64]
 
         res = try
@@ -278,9 +282,11 @@ function experiment_improvements()
     a_true = collect(1:N) .* d
 
     # 基准: 原始设置 L0=1, h=0.1, 域=[1,5], Float64
-    h_val = 0.1; L0 = 1.0; L_end = 5.0
+    h_val = 0.1;
+    L0 = 1.0;
+    L_end = 5.0
     M_base = round(Int, (L_end - L0) / h_val) + 1
-    grid_base = Float64[L0 + h_val * i for i in 0:(M_base-1)]
+    grid_base = Float64[L0 + h_val * i for i in 0:(M_base - 1)]
     f_base = Float64[sum(exp.(-Float64.(a_true) .* x)) for x in grid_base]
 
     println("\n--- 基准 (L0=1, h=0.1, [1,5], M=41, Float64) ---")
@@ -298,8 +304,9 @@ function experiment_improvements()
 
     # 改进 2: 更密的网格
     println("\n--- 改进 2: 更密网格 (L0=0, h=0.01, [0,4], M=401, Float64) ---")
-    h2 = 0.01; M2 = round(Int, 4.0 / h2) + 1
-    grid_2 = Float64[0.0 + h2 * i for i in 0:(M2-1)]
+    h2 = 0.01;
+    M2 = round(Int, 4.0 / h2) + 1
+    grid_2 = Float64[0.0 + h2 * i for i in 0:(M2 - 1)]
     f_2 = Float64[sum(exp.(-Float64.(a_true) .* x)) for x in grid_2]
     res_2 = matrix_pencil(grid_2, f_2, N)
     err_2 = maximum(abs.(res_2.a .- Float64.(a_true)))
@@ -343,8 +350,9 @@ function experiment_improvements()
 
     # 改进 5: 组合方案 — 从 x=0 开始 + 密网格
     println("\n--- 改进 5: 组合 (L0=0, h=0.02, [0,8], M=401, Float64) ---")
-    h5 = 0.02; M5 = round(Int, 8.0 / h5) + 1
-    grid_5 = Float64[0.0 + h5 * i for i in 0:(M5-1)]
+    h5 = 0.02;
+    M5 = round(Int, 8.0 / h5) + 1
+    grid_5 = Float64[0.0 + h5 * i for i in 0:(M5 - 1)]
     f_5 = Float64[sum(exp.(-Float64.(a_true) .* x)) for x in grid_5]
     res_5 = matrix_pencil(grid_5, f_5, N)
     err_5 = maximum(abs.(res_5.a .- Float64.(a_true)))
@@ -416,7 +424,7 @@ function generate_error_report(output_path::String)
 
     report_str = String(take!(io))
     open(output_path, "w") do f
-        write(f, report_str)
+        return write(f, report_str)
     end
 end
 
@@ -443,15 +451,19 @@ function experiment_pencil_L()
     a_true = Float64.(collect(1:N) .* 0.5)
 
     println("\n--- 6a: 域 [0,4], h=0.01, M=401, 变化 L ---")
-    h_val = 0.01; M = 401
-    grid = Float64[0.0 + h_val * i for i in 0:(M-1)]
+    h_val = 0.01;
+    M = 401
+    grid = Float64[0.0 + h_val * i for i in 0:(M - 1)]
     f = Float64[sum(exp.(-a_true .* x)) for x in grid]
 
     println("  L     | 矩阵尺寸      | max|Δa|     | 前3个分量误差")
     println("  " * "-" ^ 70)
 
     for L_val in [10, 15, 20, 30, 50, 100, 200]
-        if L_val >= M - N; continue; end
+        if L_val >= M - N
+            ;
+            continue;
+        end
         res = try
             matrix_pencil(grid, f, N; pencil_L=L_val)
         catch e
