@@ -14,7 +14,6 @@ Strategy: iterative peeling
 """
 
 include("hankel.jl")
-include("../src/math/sequence.jl")
 using Printf, LinearAlgebra
 
 # ════════════════════════════════════════════════════════════
@@ -258,9 +257,11 @@ end
 
 function safe_run(fn)
     try
-        ; return fn();
+        ;
+        return fn();
     catch
-        ; return nothing;
+        ;
+        return nothing;
     end
 end
 

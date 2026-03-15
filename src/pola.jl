@@ -68,13 +68,8 @@ function build_bspline_itp(grid::AbstractVector{T}, f::AbstractVector{T}) where 
     return Interpolations.scale(itp_base, grid_range)
 end
 
-"""
-    bspline_interp(grid, f, x)
-
-B-spline interpolation. precision is O(h⁴).
-"""
-function bspline_interp(grid::AbstractVector{T}, f::AbstractVector{T}, x::T,
-                        pm::BsplinePola) where {T}
+function interpolate(grid::AbstractVector{T}, f::AbstractVector{T}, x::T,
+                     pm::BsplinePola) where {T}
     itp = build_bspline_itp(grid, f)
     return itp(x)
 end

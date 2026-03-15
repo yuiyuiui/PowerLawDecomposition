@@ -1,36 +1,6 @@
-using LinearAlgebra
-
-"""
-    ExponentialSum{T}
-
-Represents f(x) = Σᵢ c[i] * exp(-a[i] * x).
-Fields are sorted by ascending decay rate `a`.
-"""
 struct ExponentialSum{T<:Real}
     c::Vector{T}
     a::Vector{T}
-end
-
-function eval_expsum(es::ExponentialSum{T}, x::T) where {T}
-    s = zero(T)
-    @inbounds for i in eachindex(es.c)
-        s += es.c[i] * exp(-es.a[i] * x)
-    end
-    return s
-end
-
-function eval_expsum(es::ExponentialSum{T}, grid::AbstractVector{T}) where {T}
-    return T[eval_expsum(es, x) for x in grid]
-end
-
-function rmse(es::ExponentialSum{T}, grid::AbstractVector{T},
-              f::AbstractVector{T}) where {T}
-    err = zero(T)
-    @inbounds for k in eachindex(f)
-        r = eval_expsum(es, grid[k]) - f[k]
-        err += r * r
-    end
-    return sqrt(err / length(f))
 end
 
 function _solve_amplitudes(grid::AbstractVector{T}, f::AbstractVector{T},
@@ -46,51 +16,6 @@ end
 function _pack(c::Vector{T}, a::Vector{T}) where {T}
     perm = sortperm(a)
     return ExponentialSum(c[perm], a[perm])
-end
-
-# ════════════════════════════════════════════════════════════
-#  Prony's method (least-squares variant)
-# ════════════════════════════════════════════════════════════
-
-"""
-    prony(grid, f, N) -> ExponentialSum
-
-Decompose `f` sampled on a uniform `grid` into `N` real exponential terms
-`f(x) ≈ Σ c_n exp(-a_n x)` via the classical Prony method.
-
-Requires `length(f) ≥ 2N`.
-"""
-function prony(grid::AbstractVector{T}, f::AbstractVector{T}, N::Int) where {T<:Real}
-    M = length(f)
-    @assert M >= 2N "Need M ≥ 2N data points (got $M for N=$N)"
-    @assert length(grid) == M
-    h = grid[2] - grid[1]
-
-    # Linear prediction: build over-determined Toeplitz system H q = b
-    nrows = M - N
-    H = zeros(T, nrows, N)
-    b = zeros(T, nrows)
-    @inbounds for i in 1:nrows
-        for j in 1:N
-            H[i, j] = f[i + N - j]
-        end
-        b[i] = f[i + N]
-    end
-    p = -(H \ b)   # AR coefficients: z^N + p₁z^{N-1} + … + pₙ = 0
-
-    # Roots via companion matrix
-    C = zeros(T, N, N)
-    @inbounds for i in 2:N
-        C[i, i - 1] = one(T)
-    end
-    @inbounds for i in 1:N
-        C[i, N] = -p[N + 1 - i]
-    end
-
-    z = eigvals(C)
-    a_vals = T[-log(abs(T(real(zk)))) / h for zk in z]
-    c_vals = _solve_amplitudes(grid, f, a_vals)
-    return _pack(c_vals, a_vals)
 end
 
 # ════════════════════════════════════════════════════════════
@@ -139,7 +64,7 @@ function matrix_pencil(grid::AbstractVector{T}, f::AbstractVector{T}, N::Int;
     c_vals = _solve_amplitudes(grid, f, a_vals)
     return _pack(c_vals, a_vals)
 end
-
+#=
 # ════════════════════════════════════════════════════════════
 #  Delayed Hankel Matrix Pencil (stride-k construction)
 # ════════════════════════════════════════════════════════════
@@ -205,42 +130,6 @@ function matrix_pencil_delayed(grid::AbstractVector{T}, f::AbstractVector{T}, N:
     Z = S_inv * (U_N' * Y1 * V_N)
     z = eigvals(Z)
     a_vals = T[-log(abs(T(real(zk)))) / h_eff for zk in z]
-    c_vals = _solve_amplitudes(grid, f, a_vals)
-    return _pack(c_vals, a_vals)
-end
-
-function matrix_pencil_delayed_2(grid::AbstractVector{T}, f::AbstractVector{T}, N::Int;
-                                 svd_tol::Real=0, pencil_L::Int=0,
-                                 stride::Int=1) where {T<:Real}
-    M = length(f)
-    @assert M >= 2N + 1 "Need M ≥ 2N+1 data points (got $M for N=$N)"
-    @assert length(grid) == M
-    h = grid[2] - grid[1]
-    L = pencil_L > 0 ? min(pencil_L, M - N - 1) : div(M - 1, 2)
-
-    # Hankel matrix
-    nrow = M - L
-    Y = zeros(T, nrow, L + 1)
-    @inbounds for i in 1:nrow, j in 1:(L + 1)
-        Y[i, j] = f[i + j - 1]
-    end
-
-    Y0 = Y[:, 1:(L + 1 - stride)]
-    Y1 = Y[:, (1 + stride):(L + 1)]
-
-    # SVD, truncate to rank N
-    F = svd(Y0)
-    svd_n = count(F.S .> svd_tol)
-    (svd_n < N) && @warn "SVD truncated to rank $svd_n, which is less than $N"
-    N = min(svd_n, N)
-
-    U_N = F.U[:, 1:N]
-    S_inv = Diagonal(one(T) ./ F.S[1:N])
-    V_N = F.V[:, 1:N]
-
-    Z = S_inv * (U_N' * Y1 * V_N)
-    z = eigvals(Z)
-    a_vals = T[-log(abs(T(real(zk)))) / h for zk in z] ./ stride
     c_vals = _solve_amplitudes(grid, f, a_vals)
     return _pack(c_vals, a_vals)
 end
@@ -729,9 +618,9 @@ function _try_delta_delayed(grid::AbstractVector{T}, f::AbstractVector{T},
     Y_delta = (Y1 - Y0) / h_eff
 
     F = try
-        svd(Y0)
+        ; svd(Y0);
     catch
-        return nothing
+        ; return nothing;
     end
     svd_n = count(F.S .> svd_tol)
     svd_n < 1 && return nothing
@@ -743,9 +632,9 @@ function _try_delta_delayed(grid::AbstractVector{T}, f::AbstractVector{T},
 
     Z_delta = S_inv * (U_N' * Y_delta * V_N)
     lam = try
-        eigvals(Z_delta)
+        ; eigvals(Z_delta);
     catch
-        return nothing
+        ; return nothing;
     end
 
     a_vals = Vector{T}(undef, Neff)
@@ -1009,9 +898,9 @@ function matrix_pencil_universal(grid::AbstractVector{T}, f::AbstractVector{T}, 
 
     function try_and_update(fn)
         res = try
-            fn()
+            ; fn();
         catch
-            nothing
+            ; nothing;
         end
         res === nothing && return
         length(res.a) < N && return
@@ -1057,3 +946,4 @@ function matrix_pencil_universal(grid::AbstractVector{T}, f::AbstractVector{T}, 
     end
     return best_result
 end
+=#

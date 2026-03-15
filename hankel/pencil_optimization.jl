@@ -459,21 +459,24 @@ function experiment_h_with_fixed_L()
         res_3n = try
             matrix_pencil(grid, f, N; pencil_L=L_3n)
         catch
-            ; nothing;
+            ;
+            nothing;
         end
         err_3n = res_3n !== nothing ? max_a_error(res_3n, a_true) : NaN
 
         res_half = try
             matrix_pencil(grid, f, N; pencil_L=L_half)
         catch
-            ; nothing;
+            ;
+            nothing;
         end
         err_half = res_half !== nothing ? max_a_error(res_half, a_true) : NaN
 
         res_sub = try
             matrix_pencil_subsample(grid, f, N)
         catch
-            ; nothing;
+            ;
+            nothing;
         end
         err_sub = res_sub !== nothing ? max_a_error(res_sub, a_true) : NaN
 
@@ -496,21 +499,24 @@ function experiment_h_with_fixed_L()
         res_3n = try
             matrix_pencil(grid, f, N; pencil_L=L_3n)
         catch
-            ; nothing;
+            ;
+            nothing;
         end
         err_3n = res_3n !== nothing ? max_a_error(res_3n, a_true) : NaN
 
         res_half = try
             matrix_pencil(grid, f, N; pencil_L=L_half)
         catch
-            ; nothing;
+            ;
+            nothing;
         end
         err_half = res_half !== nothing ? max_a_error(res_half, a_true) : NaN
 
         res_sub = try
             matrix_pencil_subsample(grid, f, N)
         catch
-            ; nothing;
+            ;
+            nothing;
         end
         err_sub = res_sub !== nothing ? max_a_error(res_sub, a_true) : NaN
 
@@ -560,7 +566,8 @@ function experiment_h_selection()
             res = try
                 matrix_pencil(grid_sub, f_sub, N; pencil_L=L)
             catch
-                ; nothing;
+                ;
+                nothing;
             end
             err = res !== nothing ? max_a_error(res, a_true) : NaN
 
@@ -610,7 +617,8 @@ function experiment_auto_comparison()
             res = try
                 mfunc()
             catch
-                ; nothing;
+                ;
+                nothing;
             end
 
             if res !== nothing
